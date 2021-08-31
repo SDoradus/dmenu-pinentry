@@ -8,7 +8,7 @@ This program is a fork from [spine](https://gitgud.io/zavok/spine.git) which is 
 
 Requirements
 ------------
-In order to build dmenu you need the Xlib header files.
+In order to build dmenu-pinentry you need the Xlib, and libconfig header files.
 
 
 Installation
