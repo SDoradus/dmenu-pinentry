@@ -14,7 +14,8 @@
    General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, see <http://www.gnu.org/licenses/>.
+   along with this program; if not, see <https://www.gnu.org/licenses/>.
+   SPDX-License-Identifier: GPL-2.0+
  */
 
 #ifndef PASSWORD_CACHE_H
@@ -22,7 +23,7 @@
 
 void password_cache_save (const char *key_grip, const char *password);
 
-char *password_cache_lookup (const char *key_grip);
+char *password_cache_lookup (const char *key_grip, int *fatal_error);
 
 int password_cache_clear (const char *keygrip);
 

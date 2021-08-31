@@ -1,20 +1,21 @@
 /* pinentry.h - The interface for the PIN entry support library.
-   Copyright (C) 2002, 2003, 2010, 2015 g10 Code GmbH
-
-   This file is part of PINENTRY.
-
-   PINENTRY is free software; you can redistribute it and/or modify it
-   under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2 of the License, or
-   (at your option) any later version.
-
-   PINENTRY is distributed in the hope that it will be useful, but
-   WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * Copyright (C) 2002, 2003, 2010, 2015, 2021 g10 Code GmbH
+ *
+ * This file is part of PINENTRY.
+ *
+ * PINENTRY is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * PINENTRY is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-2.0+
  */
 
 #ifndef PINENTRY_H
@@ -74,7 +75,9 @@ struct pinentry
      supported.  (Assuan: "OPTION ttyname TTYNAME".)  */
   char *ttyname;
   /* The type of the terminal.  (Assuan: "OPTION ttytype TTYTYPE".)  */
-  char *ttytype;
+  char *ttytype_l;
+  /* Set the alert mode (none, beep or flash).  */
+  char *ttyalert;
   /* The LC_CTYPE value for the terminal.  (Assuan: "OPTION lc-ctype
      LC_CTYPE".)  */
   char *lc_ctype;
@@ -91,6 +94,18 @@ struct pinentry
   /* True if caller should grab the keyboard.  (Assuan: "OPTION grab"
      or "OPTION no-grab".)  */
   int grab;
+
+  /* The PID of the owner or 0 if not known.  The owner is the process
+   * which actually triggered the the pinentry.  For example gpg.  */
+  unsigned long owner_pid;
+
+  /* The numeric uid (user ID) of the owner process or -1 if not
+   * known. */
+  int owner_uid;
+
+  /* The malloced hostname of the owner or NULL.  */
+  char *owner_host;
+
   /* The window ID of the parent window over which the pinentry window
      should be displayed.  (Assuan: "OPTION parent-wid WID".)  */
   int parent_wid;
@@ -109,7 +124,7 @@ struct pinentry
   int canceled;
 
   /* The frontend should set this to true if an error with the local
-     conversion occured. */
+     conversion occurred. */
   int locale_err;
 
   /* The frontend should set this to a gpg-error so that commands are
@@ -117,6 +132,13 @@ struct pinentry
      the fact that pinentry_cmd_handler_t returns the length of the
      passphrase or a negative error code.  */
   int specific_err;
+
+  /* The frontend may store a string with the error location here.  */
+  const char *specific_err_loc;
+
+  /* The frontend may store a malloced string here to emit an ERROR
+   * status code with this extra info along with SPECIFIC_ERR.  */
+  char *specific_err_info;
 
   /* The frontend should set this to true if the window close button
      has been used.  This flag is used in addition to a regular return
@@ -148,9 +170,28 @@ struct pinentry
      "SETQUALITYBAR LABEL".)  */
   char *quality_bar;
 
-  /* The tooltip to be show for the qualitybar.  Malloced or NULL.
+  /* The tooltip to be shown for the qualitybar.  Malloced or NULL.
      (Assuan: "SETQUALITYBAR_TT TOOLTIP".)  */
   char *quality_bar_tt;
+
+  /* If this is not NULL, a generate action should be shown.
+     There will be an inquiry back to the caller to get such a
+     PIN. generate action.  Malloced or NULL.
+     (Assuan: "SETGENPIN LABEL" .)  */
+  char *genpin_label;
+
+  /* The tooltip to be shown for the generate action.  Malloced or NULL.
+     (Assuan: "SETGENPIN_TT TOOLTIP".)  */
+  char *genpin_tt;
+
+  /* Specifies whether passphrase formatting should be enabled.
+     (Assuan: "OPTION formatted-passphrase")  */
+  int formatted_passphrase;
+
+  /* A hint to be shown near the passphrase input field if passphrase
+     formatting is enabled.  Malloced or NULL.
+     (Assuan: "OPTION formatted-passphrase-hint=HINT".)  */
+  char *formatted_passphrase_hint;
 
   /* For the curses pinentry, the color of error messages.  */
   pinentry_color_t color_fg;
@@ -171,6 +212,18 @@ struct pinentry
   /* (Assuan: "OPTION default-pwmngr
      SAVE_PASSWORD_WITH_PASSWORD_MANAGER?").  */
   char *default_pwmngr;
+  /* (Assuan: "OPTION default-cf-visi
+     Do you really want to make your passphrase visible?").  */
+  char *default_cf_visi;
+  /* (Assuan: "OPTION default-tt-visi
+     Make passphrase visible?").  */
+  char *default_tt_visi;
+  /* (Assuan: "OPTION default-tt-hide
+     Hide passphrase").  */
+  char *default_tt_hide;
+  /* (Assuan: "OPTION default-capshint
+     Caps Lock is on").  */
+  char *default_capshint;
 
   /* Whether we are allowed to read the password from an external
      cache.  (Assuan: "OPTION allow-external-password-cache")  */
@@ -189,9 +242,34 @@ struct pinentry
   /* NOTE: If you add any additional fields to this structure, be sure
      to update the initializer in pinentry/pinentry.c!!!  */
 
-  /* For the quality indicator we need to do an inquiry.  Thus we need
-     to save the assuan ctx.  */
+  /* For the quality indicator and genpin we need to do an inquiry.
+     Thus we need to save the assuan ctx.  */
   void *ctx_assuan;
+
+  /* An UTF-8 string with an invisible character used to override the
+     default in some pinentries.  Only the first character is
+     used.  */
+  char *invisible_char;
+
+  /* Whether the passphrase constraints are enforced by gpg-agent.
+     (Assuan: "OPTION constraints-enforce")  */
+  int constraints_enforce;
+
+  /* A short translated hint for the user with the constraints for new
+     passphrases to be displayed near the passphrase input field.
+     Malloced or NULL.
+     (Assuan: "OPTION constraints-hint-short=At least 8 characters".)  */
+  char *constraints_hint_short;
+
+  /* A longer translated hint for the user with the constraints for new
+     passphrases to be displayed for example as tooltip.  Malloced or NULL.
+     (Assuan: "OPTION constraints-hint-long=The passphrase must ...".)  */
+  char *constraints_hint_long;
+
+  /* A short translated title for an error dialog informing the user about
+     unsatisfied passphrase constraints.  Malloced or NULL.
+     (Assuan: "OPTION constraints-error-title=Passphrase Not Allowed".)  */
+  char *constraints_error_title;
 
 };
 typedef struct pinentry *pinentry_t;
@@ -201,7 +279,7 @@ typedef struct pinentry *pinentry_t;
    PIN.  If PIN->pin is zero, request a confirmation, otherwise a PIN
    entry.  On confirmation, the function should return TRUE if
    confirmed, and FALSE otherwise.  On PIN entry, the function should
-   return -1 if an error occured or the user cancelled the operation
+   return -1 if an error occurred or the user cancelled the operation
    and 1 otherwise.  */
 typedef int (*pinentry_cmd_handler_t) (pinentry_t pin);
 
@@ -227,10 +305,20 @@ char *pinentry_utf8_to_local (const char *lc_ctype, const char *text);
    Return NULL on error. */
 char *pinentry_local_to_utf8 (char *lc_ctype, char *text, int secure);
 
+char *pinentry_get_title (pinentry_t pe);
 
 /* Run a quality inquiry for PASSPHRASE of LENGTH. */
 int pinentry_inq_quality (pinentry_t pin,
                           const char *passphrase, size_t length);
+
+/* Run a checkpin inquiry for PASSPHRASE of LENGTH.  Returns NULL, if the
+   passphrase satisfies the constraints.  Otherwise, returns a malloced error
+   string. */
+char *pinentry_inq_checkpin (pinentry_t pin,
+                             const char *passphrase, size_t length);
+
+/* Run a genpin iquriry. Returns a malloced string or NULL */
+char *pinentry_inq_genpin (pinentry_t pin);
 
 /* Try to make room for at least LEN bytes for the pin in the pinentry
    PIN.  Returns new buffer on success and 0 on failure.  */
@@ -253,6 +341,10 @@ int pinentry_have_display (int argc, char **argv);
 /* Parse the command line options.  May exit the program if only help
    or version output is requested.  */
 void pinentry_parse_opts (int argc, char *argv[]);
+
+/* Set the optional flag used with getinfo. */
+void pinentry_set_flavor_flag (const char *string);
+
 
 
 /* The caller must define this variable to process assuan commands.  */

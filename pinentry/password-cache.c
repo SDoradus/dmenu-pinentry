@@ -14,7 +14,8 @@
    General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, see <http://www.gnu.org/licenses/>.
+   along with this program; if not, see <https://www.gnu.org/licenses/>.
+   SPDX-License-Identifier: GPL-2.0+
  */
 
 #ifdef HAVE_CONFIG_H
@@ -83,7 +84,7 @@ password_cache_save (const char *keygrip, const char *password)
 				    "stored-by", "GnuPG Pinentry",
 				    "keygrip", keygrip, NULL))
     {
-      printf("Failed to cache password for key %s with secret service: %s\n",
+      fprintf (stderr, "Failed to cache password for key %s with secret service: %s\n",
 	     keygrip, error->message);
 
       g_error_free (error);
@@ -91,12 +92,14 @@ password_cache_save (const char *keygrip, const char *password)
 
   free (label);
 #else
+  (void) keygrip;
+  (void) password;
   return;
 #endif
 }
 
 char *
-password_cache_lookup (const char *keygrip)
+password_cache_lookup (const char *keygrip, int *fatal_error)
 {
 #ifdef HAVE_LIBSECRET
   GError *error = NULL;
@@ -112,7 +115,10 @@ password_cache_lookup (const char *keygrip)
 
   if (error != NULL)
     {
-      printf("Failed to lookup password for key %s with secret service: %s\n",
+      if (fatal_error)
+	*fatal_error = 1;
+
+      fprintf (stderr, "Failed to lookup password for key %s with secret service: %s\n",
 	     keygrip, error->message);
       g_error_free (error);
       return NULL;
@@ -126,12 +132,14 @@ password_cache_lookup (const char *keygrip)
   if (password2)
     strcpy(password2, password);
   else
-    printf("secmem_malloc failed: can't copy password!\n");
+    fprintf (stderr, "secmem_malloc failed: can't copy password!\n");
 
   secret_password_free (password);
 
   return password2;
 #else
+  (void) keygrip;
+  (void) fatal_error;
   return NULL;
 #endif
 }
@@ -148,7 +156,7 @@ password_cache_clear (const char *keygrip)
 					    "keygrip", keygrip, NULL);
   if (error != NULL)
     {
-      printf("Failed to clear password for key %s with secret service: %s\n",
+      fprintf (stderr, "Failed to clear password for key %s with secret service: %s\n",
 	     keygrip, error->message);
       g_debug("%s", error->message);
       g_error_free (error);
@@ -158,6 +166,7 @@ password_cache_clear (const char *keygrip)
     return 1;
   return 0;
 #else
+  (void) keygrip;
   return -1;
 #endif
 }

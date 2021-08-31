@@ -25,7 +25,8 @@
  *
  * You should have received a copies of the GNU General Public License
  * and the GNU Lesser General Public License along with this program;
- * if not, see <http://www.gnu.org/licenses/>.
+ * if not, see <https://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: (GPL-2.0+ OR LGPL-3.0+)
  */
 
 #ifndef LIBJNLIB_ARGPARSE_H
