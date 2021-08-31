@@ -3,7 +3,7 @@ pinentry-dmenu
 
 pinentry-dmenu is a pinentry program with the charm of [dmenu](https://tools.suckless.org/dmenu).
 
-This program is a fork from [spine](https://gitgud.io/zavok/spine.git) which is also a fork from [dmenu](https://tools.suckless.org/dmenu).
+This program is a fork from [dmenu-pinentry](https://github.com/ritze/pinentry-dmenu) which is a fork from [spine](https://gitgud.io/zavok/spine.git) which is also a fork from [dmenu](https://tools.suckless.org/dmenu).
 
 
 Requirements
